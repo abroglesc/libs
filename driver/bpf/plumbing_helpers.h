@@ -97,7 +97,11 @@ static __always_inline long bpf_syscall_get_nr(void *ctx)
 #ifdef BPF_SUPPORTS_RAW_TRACEPOINTS
 	struct pt_regs *regs = (struct pt_regs *)args->regs;
 
+#ifdef __ARM_ARCH
+	id = _READ(regs->orig_x0);
+#else
 	id = _READ(regs->orig_ax);
+#endif
 #else
 	id = args->id;
 #endif
@@ -125,11 +129,39 @@ static __always_inline unsigned long bpf_syscall_get_argument_from_ctx(void *ctx
 {
 	unsigned long arg;
 
+	bpf_printk("plumbing_helpers.h (line 132): bpf_syscall_get_argument() - before BPF_SUPPORTS_RAW_TRACEPOINTS check\n");
 #ifdef BPF_SUPPORTS_RAW_TRACEPOINTS
 	struct sys_enter_args *args = (struct sys_enter_args *)ctx;
 	struct pt_regs *regs = (struct pt_regs *)args->regs;
 
+	bpf_printk("plumbing_helpers.h (line 136): bpf_syscall_get_argument() - before switch statement index=%d\n", idx);
 	switch (idx) {
+#ifdef __ARM_ARCH
+// Table has a good mapping of registers for syscalls
+// https://gist.github.com/yamnikov-oleg/454f48c3c45b735631f2
+
+	case 0:
+		arg = _READ(regs->regs[0]);
+		break;
+	case 1:
+		arg = _READ(regs->regs[1]);
+		break;
+	case 2:
+		arg = _READ(regs->regs[2]);
+		break;
+	case 3:
+		arg = _READ(regs->regs[3]);
+		break;
+	case 4:
+		arg = _READ(regs->regs[4]);
+		break;
+	case 5:
+		arg = _READ(regs->regs[5]);
+		break;
+	default:
+		arg = 0;
+	}
+#else
 	case 0:
 		arg = _READ(regs->di);
 		break;
@@ -151,7 +183,9 @@ static __always_inline unsigned long bpf_syscall_get_argument_from_ctx(void *ctx
 	default:
 		arg = 0;
 	}
+#endif
 #else
+	bpf_printk("plumbing_helpers.h (line 188): bpf_syscall_get_argument() - raw tracepoints NOT SUPPORTED\n");
 	unsigned long *args = unstash_args();
 
 	if (args)
