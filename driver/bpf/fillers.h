@@ -2019,6 +2019,10 @@ static __always_inline bool get_exe_writable(struct task_struct *task)
 
 	// basic inode_permission()
 
+	#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0) /* SB_RDONLY came in 4.14 */
+		#define SB_RDONLY	MS_RDONLY
+	#endif
+
 	// check superblock permissions, i.e. if the FS is read only
 	if ((_READ(sb->s_flags) & SB_RDONLY) && (S_ISREG(i_mode) || S_ISDIR(i_mode) || S_ISLNK(i_mode))) {
 		return false;
